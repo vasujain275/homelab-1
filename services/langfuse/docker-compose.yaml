@@ -1,0 +1,19 @@
+services:
+  langfuse-server:
+    image: langfuse/langfuse:latest
+    container_name: langfuse_global
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - LANGFUSE_SECRET=${LANGFUSE_SECRET}
+      - NEXTAUTH_URL=http://${LANGFUSE_LAN_IP}:${LANGFUSE_PORT}
+      - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY}
+      - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY}
+    ports:
+      - "${LANGFUSE_LAN_IP}:${LANGFUSE_PORT}:3000"
+    networks:
+      - langfusenet
+
+networks:
+  langfusenet:
+    driver: bridge
