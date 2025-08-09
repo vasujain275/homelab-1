@@ -1,0 +1,36 @@
+
+services:
+  postgres_db:
+    image: postgres:16
+    container_name: postgres_global
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_LAN_IP}:${POSTGRES_PORT}:5432" # LAN only
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - pgnet
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin_global
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+    ports:
+      - "${POSTGRES_LAN_IP}:${PGADMIN_PORT}:80" # LAN only
+    depends_on:
+      - postgres_db
+    networks:
+      - pgnet
+
+volumes:
+  postgres_data:
+
+networks:
+  pgnet:
+    driver: bridge

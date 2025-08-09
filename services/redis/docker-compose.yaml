@@ -1,0 +1,22 @@
+services:
+  redis_db:
+    image: valkey/valkey:latest
+    container_name: valkey_global
+    restart: unless-stopped
+    command: >
+      valkey-server
+      --requirepass ${REDIS_PASSWORD}
+      --appendonly yes
+    ports:
+      - "${REDIS_LAN_IP}:${REDIS_PORT}:6379" # LAN only
+    volumes:
+      - redis_data:/data
+    networks:
+      - redisnet
+
+volumes:
+  redis_data:
+
+networks:
+  redisnet:
+    driver: bridge
