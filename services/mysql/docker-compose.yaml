@@ -1,0 +1,40 @@
+services:
+  mysql_db:
+    image: mysql:8.0
+    container_name: mysql_global
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "${MYSQL_LAN_IP}:${MYSQL_PORT}:3306" # LAN only
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - mysqlnet
+    command: --default-authentication-plugin=mysql_native_password
+
+  adminer:
+    image: adminer:latest
+    container_name: adminer_global
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      ADMINER_DEFAULT_SERVER: mysql_db
+    ports:
+      - "${MYSQL_LAN_IP}:${ADMINER_PORT}:8080" # LAN only
+    depends_on:
+      - mysql_db
+    networks:
+      - mysqlnet
+
+volumes:
+  mysql_data:
+
+networks:
+  mysqlnet:
+    driver: bridge
