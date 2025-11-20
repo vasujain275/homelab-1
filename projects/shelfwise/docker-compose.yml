@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  # ShelfWise Application (connects to external MySQL)
+  app:
+    image: vasujain275/shelfwise:latest
+    container_name: shelfwise-app-prod
+    environment:
+      # JVM Options
+      JAVA_OPTS: >
+        -XX:+UseContainerSupport
+        -XX:MaxRAMPercentage=75.0
+        -XX:+UseG1GC
+        -XX:+UseStringDeduplication
+        -Djava.security.egd=file:/dev/./urandom
+        -XX:+HeapDumpOnOutOfMemoryError
+        -XX:HeapDumpPath=/app/logs/heap_dump.hprof
+      # Spring configuration location
+      SPRING_OPTS: --spring.config.location=file:/app/config/application.yaml
+    ports:
+      - "9080:9080"
+    volumes:
+      - ./application.yaml:/app/config/application.yaml:ro
+      - app_logs:/app/logs
+      - app_uploads:/app/uploads
+    restart: always
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+
+volumes:
+  app_logs:
+    driver: local
+  app_uploads:
+    driver: local
