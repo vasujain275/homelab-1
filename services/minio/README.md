@@ -84,7 +84,7 @@ This section applies to **client machines** (not the MinIO host) running **Arch 
 ### 5.1 Install MinIO Client (`mc`)
 
 ```bash
-sudo pacman -S minio-client
+go install github.com/minio/mc@latest
 ```
 
 Verify:
