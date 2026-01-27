@@ -1,0 +1,18 @@
+services:
+  seanime:
+    image: umagistr/seanime:latest-hwaccel
+    container_name: seanime
+    environment:
+      - SEANIME_SERVER_HOST=0.0.0.0
+    devices:
+      - /dev/dri:/dev/dri
+    group_add:
+      - "44"    # video (usually 44, verify if you want)
+      - "993"   # render
+    ports:
+      - "3211:43211"
+    volumes:
+      - /home/vasu/services/seanime/seanime-config:/home/seanime/.config/Seanime
+      - /home/vasu/services/seanime/anime:/anime
+      - /home/vasu/services/seanime/downloads:/downloads
+    restart: unless-stopped
