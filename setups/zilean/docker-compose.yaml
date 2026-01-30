@@ -1,45 +1,63 @@
+version: "3.9"
+
 volumes:
   zilean_data:
-  zilean_tmp:
-  postgres_data:
+  zilean-pg-data:
 
 services:
   zilean:
     image: itsayushsehrawat/zilean:latest
-    restart: unless-stopped
     container_name: zilean
+    restart: unless-stopped
     tty: true
-    environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      GITHUB_TOKEN: ${GITHUB_TOKEN}
+
     ports:
-      - "8181:8181"
+      - "${ZILEAN_PORT}:8181"
+
     volumes:
       - zilean_data:/app/data
-      - zilean_tmp:/tmp
+      # - ./settings.json:/app/data/settings.json
+
+    environment:
+      Zilean__Database__ConnectionString: Host=zilean-postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+
+      # Optional ingestion config
+      # Zilean__Ingestion__EnableScraping: ${ENABLE_SCRAPING}
+      # Zilean__Ingestion__ScrapeSchedule: ${SCRAPE_SCHEDULE}
+
     healthcheck:
       test: curl --connect-timeout 10 --silent --show-error --fail http://localhost:8181/healthchecks/ping
       timeout: 60s
       interval: 30s
       retries: 10
+
     depends_on:
-      postgres:
+      zilean-postgres:
         condition: service_healthy
 
-  postgres:
-    image: postgres:17.2-alpine
-    container_name: postgres
+
+  zilean-postgres:
+    image: postgres:16.3-alpine3.20
+    container_name: zilean-postgres
     restart: unless-stopped
-    shm_size: 2G
+    shm_size: 2g
+
     environment:
       PGDATA: /var/lib/postgresql/data/pgdata
-      POSTGRES_USER: postgres
+      POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: zilean
+      POSTGRES_DB: ${POSTGRES_DB}
+
+    ports:
+      - "${POSTGRES_PORT}:5432"
+
     volumes:
-      - postgres_data:/var/lib/postgresql/data/pgdata
+      - zilean-pg-data:/var/lib/postgresql/data/pgdata
+
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 10s
       timeout: 5s
       retries: 5
