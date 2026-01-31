@@ -1,0 +1,287 @@
+# CometNet Homelab Deployment
+
+This is a self-hosted CometNet instance configured for homelab deployment behind CGNAT using Cloudflare Tunnels.
+
+## What is CometNet?
+
+CometNet is a decentralized P2P network integrated into Comet that automatically shares torrent **metadata** (not files) between instances. When your instance discovers a torrent, its metadata is propagated to other nodes - and you receive metadata discovered by others.
+
+**Key Features:**
+- Peer-to-peer with no central server
+- Cryptographically signed contributions
+- Reputation system to filter bad actors
+- Trust Pools for private communities
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ HOMELAB (Behind CGNAT)                                          │
+│                                                                 │
+│   ┌─────────────────┐     ┌─────────────────────┐               │
+│   │   PostgreSQL    │◄────│      Comet          │               │
+│   │  :5432 (internal)     │  + CometNet         │               │
+│   └─────────────────┘     │   :8766 (HTTP API)  │               │
+│                           │   :8765 (WebSocket) │               │
+│                           └─────────────────────┘               │
+│                                     │                           │
+│   ┌─────────────────────────────────┴─────────────────────────┐ │
+│   │              Cloudflare Tunnel (cloudflared)              │ │
+│   │                                                           │ │
+│   │  comet.yourdomain.com     → localhost:8766 (HTTP)         │ │
+│   │  cometnet.yourdomain.com  → localhost:8765 (WebSocket)    │ │
+│   └───────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼ (outbound tunnel)
+                    ┌──────────────────┐
+                    │  Cloudflare Edge │
+                    └──────────────────┘
+```
+
+## Prerequisites
+
+- Docker and Docker Compose
+- Cloudflare account with a domain
+- Cloudflare Tunnel (cloudflared) installed and running
+- Server with at least 2GB available RAM
+
+## Directory Structure
+
+```
+/path/to/this/folder/          # This folder (config files)
+├── docker-compose.yml         # Container orchestration
+├── .env.example               # Template (commit-safe)
+├── .env                       # Actual secrets (DO NOT COMMIT)
+└── README.md                  # This file
+
+/home/vasu/services/cometnet/  # Data directory (persistent storage)
+├── comet/                     # Comet app data + CometNet keys
+└── postgres/                  # PostgreSQL database
+```
+
+## Deployment Steps
+
+### Step 1: Configure Cloudflare Tunnel
+
+In **Cloudflare Zero Trust Dashboard** → **Networks** → **Tunnels** → **[Your Tunnel]** → **Public Hostnames**:
+
+Add two hostname entries:
+
+| Subdomain | Domain | Type | URL |
+|-----------|--------|------|-----|
+| `comet` | `yourdomain.com` | HTTP | `192.168.1.75:8766` |
+| `cometnet` | `yourdomain.com` | HTTP | `192.168.1.75:8765` |
+
+> **Note:** Cloudflare automatically handles WebSocket upgrades, so use HTTP type for both.
+
+### Step 2: Create Data Directory
+
+```bash
+sudo mkdir -p /home/vasu/services/cometnet/{comet,postgres}
+sudo chown -R $(id -u):$(id -g) /home/vasu/services/cometnet
+```
+
+### Step 3: Configure Environment
+
+```bash
+# Copy the example file
+cp .env.example .env
+
+# Edit with your settings
+nano .env
+```
+
+**Required changes in `.env`:**
+
+| Variable | What to set |
+|----------|-------------|
+| `POSTGRES_PASSWORD` | Strong random password |
+| `ADMIN_DASHBOARD_PASSWORD` | Password for Comet admin UI |
+| `COMETNET_ADVERTISE_URL` | `wss://cometnet.yourdomain.com` |
+| `COMETNET_BOOTSTRAP_NODES` | Get from Comet Discord or leave empty |
+
+### Step 4: Deploy
+
+```bash
+# Start the stack
+docker compose up -d
+
+# Check logs
+docker compose logs -f comet
+
+# Verify health
+docker compose ps
+```
+
+### Step 5: Verify CometNet
+
+1. **Check logs for startup:**
+   ```bash
+   docker compose logs comet | grep -i cometnet
+   ```
+   Look for: `CometNet started - Node ID: abc123...`
+
+2. **Access Admin Dashboard:**
+   - Go to `https://comet.yourdomain.com/admin`
+   - Login with `ADMIN_DASHBOARD_PASSWORD`
+   - Check CometNet tab for peer connections
+
+3. **Test WebSocket connectivity:**
+   ```bash
+   curl -I https://cometnet.yourdomain.com
+   ```
+   Should return `405 Method Not Allowed` (WebSocket endpoint, not HTTP)
+
+## Configuration Reference
+
+### Ports
+
+| Port | Protocol | Purpose |
+|------|----------|---------|
+| 8766 | HTTP | Comet API & Stremio addon |
+| 8765 | WebSocket | CometNet P2P connections |
+| 5432 | TCP | PostgreSQL (internal only) |
+
+### Configuration Categories
+
+The `.env.example` file contains **all** available options organized into sections:
+
+| Section | Description |
+|---------|-------------|
+| Database Credentials | PostgreSQL connection settings |
+| Stremio Addon | Addon ID and name |
+| FastAPI Server | Workers, Gunicorn settings |
+| Dashboard | Admin password, metrics API |
+| Cache Settings | TTL for metadata, torrents, debrid |
+| Background Scraper | Auto-scraping configuration |
+| Anime Mapping | AniList/MAL integration |
+| Networking & Proxy | Global proxy, rate limiting |
+| Jackett/Prowlarr | Indexer manager configuration |
+| Scrapers | All supported scrapers (Zilean, Torrentio, etc.) |
+| Debrid Proxy | Stream proxying settings |
+| Content Filtering | Adult content, language detection |
+| HTTP Cache | Cloudflare cache headers |
+| CometNet Core | P2P network settings |
+| CometNet Advanced | Gossip, transport, reputation tuning |
+| Trust Pools | Private communities |
+| Private Networks | Isolated network mode |
+
+### Key CometNet Variables
+
+| Variable | Description |
+|----------|-------------|
+| `COMETNET_ENABLED` | Must be `True` for integrated mode |
+| `FASTAPI_WORKERS` | Must be `1` for integrated mode |
+| `COMETNET_ADVERTISE_URL` | Your public WebSocket URL |
+| `COMETNET_BOOTSTRAP_NODES` | Entry points to discover peers |
+| `COMETNET_UPNP_ENABLED` | Set `False` if behind CGNAT |
+| `COMETNET_MAX_PEERS` | Max connections (lower = less resources) |
+| `COMETNET_CONTRIBUTION_MODE` | `full`, `consumer`, `source`, or `leech` |
+
+### Contribution Modes
+
+| Mode | Shares Own | Receives | Repropagates | Use Case |
+|------|------------|----------|--------------|----------|
+| `full` | Yes | Yes | Yes | Default, full participation |
+| `consumer` | No | Yes | Yes | Passive node |
+| `source` | Yes | No | No | Dedicated scraper |
+| `leech` | No | Yes | No | Selfish mode |
+
+## Troubleshooting
+
+### "Reachability check failed"
+
+CometNet verifies your advertise URL is accessible on startup.
+
+**Solutions:**
+1. Verify Cloudflare Tunnel is running and routes are correct
+2. Increase retry settings in `.env`:
+   ```env
+   COMETNET_REACHABILITY_RETRIES=15
+   COMETNET_REACHABILITY_RETRY_DELAY=20
+   ```
+3. For testing only: `COMETNET_SKIP_REACHABILITY_CHECK=True`
+
+### No peers connecting
+
+1. Check bootstrap nodes are configured correctly
+2. Verify WebSocket URL is accessible externally
+3. Check Comet Discord for correct bootstrap URLs
+
+### High memory usage
+
+Reduce resource consumption:
+```env
+COMETNET_MAX_PEERS=15
+COMETNET_GOSSIP_FANOUT=2
+```
+
+### Database connection errors
+
+1. Ensure PostgreSQL is healthy: `docker compose ps`
+2. Check credentials match between services
+3. Wait for PostgreSQL to fully start (healthcheck)
+
+## Data Management
+
+### Backup
+
+```bash
+# Stop containers first for consistent backup
+docker compose stop
+
+# Backup data directory
+tar -czvf cometnet-backup-$(date +%Y%m%d).tar.gz /home/vasu/services/cometnet/
+
+# Restart
+docker compose start
+```
+
+### Move data to different drive
+
+1. Stop containers: `docker compose stop`
+2. Move data: `mv /home/vasu/services/cometnet /new/path/cometnet`
+3. Update `docker-compose.yml` volume paths
+4. Start containers: `docker compose up -d`
+
+### Reset CometNet identity
+
+To get a new Node ID (loses reputation):
+```bash
+docker compose stop
+rm -rf /home/vasu/services/cometnet/comet/cometnet/
+docker compose up -d
+```
+
+## Useful Commands
+
+```bash
+# View live logs
+docker compose logs -f
+
+# Restart Comet only
+docker compose restart comet
+
+# Check container stats
+docker stats comet comet-postgres
+
+# Enter Comet container
+docker compose exec comet bash
+
+# PostgreSQL shell
+docker compose exec postgres psql -U comet -d comet
+```
+
+## Resources
+
+- [Comet GitHub](https://github.com/g0ldyy/comet)
+- [Comet Discord](https://discord.com/invite/UJEqpT42nb)
+- [CometNet Documentation](https://github.com/g0ldyy/comet/blob/main/COMETNET.md)
+
+## Notes
+
+- **UPnP will not work** behind CGNAT - Cloudflare Tunnel is the correct solution
+- **Single worker required** - CometNet integrated mode needs `FASTAPI_WORKERS=1`
+- **Bootstrap nodes** - Ask on Comet Discord for current public bootstrap URLs
+- This setup uses ~350-650MB RAM total (Comet + PostgreSQL)

@@ -1,0 +1,51 @@
+services:
+  comet:
+    container_name: comet
+    image: g0ldyy/comet:latest
+    restart: unless-stopped
+    ports:
+      - "8766:8000"   # Comet HTTP API (internal 8000 -> external 8766)
+      - "8765:8765"   # CometNet P2P WebSocket
+    env_file:
+      - .env
+    environment:
+      DATABASE_TYPE: postgresql
+      DATABASE_URL: ${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    volumes:
+      - /home/vasu/services/cometnet/comet:/app/data
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    container_name: comet-postgres
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_buffers=128MB"
+      - "-c"
+      - "effective_cache_size=256MB"
+      - "-c"
+      - "work_mem=4MB"
+      - "-c"
+      - "max_connections=50"
+    volumes:
+      - /home/vasu/services/cometnet/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
