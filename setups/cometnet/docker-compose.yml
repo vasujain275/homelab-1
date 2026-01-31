@@ -4,7 +4,7 @@ services:
     image: g0ldyy/comet:latest
     restart: unless-stopped
     ports:
-      - "8000:8000"   # Comet HTTP API
+      - "8766:8000"   # Comet HTTP API (external 8766 → internal 8000)
       - "8765:8765"   # CometNet P2P WebSocket
     env_file:
       - .env

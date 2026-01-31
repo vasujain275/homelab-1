@@ -20,7 +20,7 @@ CometNet is a decentralized P2P network integrated into Comet that automatically
 │                                                              │
 │  ┌─────────────┐    ┌─────────────────────────┐             │
 │  │  PostgreSQL │◄───│        Comet            │             │
-│  │  :5432      │    │  :8000 HTTP API         │             │
+│  │  :5432      │    │  :8766 → :8000 HTTP API │             │
 │  │  (internal) │    │  :8765 CometNet WS      │             │
 │  └─────────────┘    └──────────┬──────────────┘             │
 │                                │                             │
@@ -30,7 +30,7 @@ CometNet is a decentralized P2P network integrated into Comet that automatically
 │  │  Cloudflare Tunnel       │  │  Cloudflare Tunnel     │   │
 │  │                          │  │                        │   │
 │  │  comet.vasujain.me       │  │  cometnet.vasujain.me  │   │
-│  │  → 192.168.1.75:8000     │  │  → 192.168.1.75:8765   │   │
+│  │  → 192.168.1.75:8766     │  │  → 192.168.1.75:8765   │   │
 │  └──────────────────────────┘  └────────────────────────┘   │
 └──────────────────────────────────────────────────────────────┘
                      │                     │
@@ -51,7 +51,7 @@ CometNet is a decentralized P2P network integrated into Comet that automatically
 ```
 
 **Traffic Flow:**
-1. HTTP requests hit `comet.vasujain.me` → Tunnel → Port 8000 (Comet HTTP API)
+1. HTTP requests hit `comet.vasujain.me` → Tunnel → Port 8766 (→ internal 8000 Comet HTTP API)
 2. WebSocket requests hit `cometnet.vasujain.me` → Tunnel → Port 8765 (CometNet P2P)
 3. Two separate subdomains, no reverse proxy needed
 
@@ -86,7 +86,7 @@ Add **two** hostname entries:
 
 | Subdomain | Domain | Type | URL |
 |-----------|--------|------|-----|
-| `comet` | `vasujain.me` | HTTP | `192.168.1.75:8000` |
+| `comet` | `vasujain.me` | HTTP | `192.168.1.75:8766` |
 | `cometnet` | `vasujain.me` | HTTP | `192.168.1.75:8765` |
 
 > **Note:** Cloudflare automatically handles WebSocket upgrades for the `cometnet` subdomain.
@@ -139,9 +139,13 @@ docker compose ps
    All three containers (comet-caddy, comet, comet-postgres) should be healthy.
 
 2. **Check CometNet startup:**
-   ```bash
-   docker compose logs comet | grep -i cometnet
-   ```
+```bash
+# From host machine
+curl http://localhost:8766/health
+
+# From inside container
+docker compose exec comet wget -qO- http://127.0.0.1:8000/health
+```
    Look for: `CometNet started - Node ID: abc123...`
 
 3. **Test HTTP endpoint:**
@@ -165,11 +169,11 @@ docker compose ps
 
 ### Ports
 
-| Port | Service | Purpose |
-|------|---------|---------|
-| 8766 | Caddy | External entry point (Cloudflare Tunnel) |
-| 8000 | Comet | HTTP API (internal, via Caddy) |
-| 8765 | Comet | CometNet WebSocket (internal, via Caddy) |
+| Port | Service | Description |
+|------|---------|-------------|
+| 8766 | Comet | HTTP API (external port) |
+| 8765 | CometNet | WebSocket P2P (external port) |
+| 8000 | Comet | HTTP API (internal container port) |
 | 5432 | PostgreSQL | Database (internal only) |
 
 ### Caddy Routing
@@ -232,7 +236,7 @@ CometNet verifies your advertise URL is accessible on startup.
 
 **Solutions:**
 1. Verify Cloudflare Tunnel is running and route is correct
-2. Check Caddy logs: `docker compose logs caddy`
+2. Check Comet logs: `docker compose logs comet`
 3. Increase retry settings in `.env`:
    ```env
    COMETNET_REACHABILITY_RETRIES=15
@@ -242,8 +246,9 @@ CometNet verifies your advertise URL is accessible on startup.
 
 ### Caddy not starting
 
-1. Check Caddyfile syntax: `docker compose logs caddy`
-2. Ensure port 8766 is not in use: `ss -tlnp | grep 8766`
+**This setup doesn't use Caddy** - ports are exposed directly.
+
+If you have port conflicts:
 
 ### No peers connecting
 
@@ -291,9 +296,20 @@ docker compose start
 
 To get a new Node ID (loses reputation):
 ```bash
-docker compose stop
-rm -rf /home/vasu/services/cometnet/comet/cometnet/
-docker compose up -d
+# Restart containers
+docker compose restart comet
+
+# Check container stats
+docker stats comet comet-postgres
+
+# Enter Comet container
+docker compose exec comet bash
+
+# PostgreSQL shell
+docker compose exec postgres psql -U comet -d comet
+
+# Test local endpoints
+curl http://localhost:8766/health
 ```
 
 ## Useful Commands
@@ -303,12 +319,10 @@ docker compose up -d
 docker compose logs -f
 
 # View specific container logs
-docker compose logs -f caddy
 docker compose logs -f comet
 docker compose logs -f postgres
 
 # Restart specific service
-docker compose restart caddy
 docker compose restart comet
 
 # Check container stats
@@ -329,12 +343,11 @@ docker compose exec caddy wget -qO- http://comet:8000/health
 - [Comet GitHub](https://github.com/g0ldyy/comet)
 - [Comet Discord](https://discord.com/invite/UJEqpT42nb)
 - [CometNet Documentation](https://github.com/g0ldyy/comet/blob/main/COMETNET.md)
-- [Caddy Documentation](https://caddyserver.com/docs/)
 
 ## Notes
 
-- **Single subdomain** - Caddy handles path-based routing, so only one Cloudflare Tunnel route needed
+- **Two subdomains** - One for HTTP API (port 8766), one for WebSocket (port 8765)
 - **UPnP will not work** behind CGNAT - Cloudflare Tunnel is the correct solution
 - **Single worker required** - CometNet integrated mode needs `FASTAPI_WORKERS=1`
 - **Bootstrap nodes** - Ask on Comet Discord for current public bootstrap URLs
-- **Resource usage** - This setup uses ~400-700MB RAM total (Caddy + Comet + PostgreSQL)
+- **Resource usage** - This setup uses ~400-700MB RAM total (Comet + PostgreSQL)
