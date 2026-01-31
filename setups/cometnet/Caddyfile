@@ -1,0 +1,31 @@
+# Caddyfile for CometNet
+# Reverse proxy for Comet HTTP API and CometNet WebSocket
+#
+# Domain: comet.vasujain.me (via Cloudflare Tunnel)
+# Listens on port 8766 (HTTP - SSL terminated at Cloudflare)
+
+:8766 {
+	# CometNet WebSocket endpoint
+	# Must be matched before the catch-all route
+	handle /cometnet/ws {
+		reverse_proxy comet:8765 {
+			# Long timeouts for persistent WebSocket connections
+			transport http {
+				read_timeout 3600s
+				write_timeout 3600s
+			}
+		}
+	}
+
+	# Comet HTTP API (everything else)
+	handle {
+		reverse_proxy comet:8000
+	}
+
+	# Logging
+	log {
+		output stdout
+		format console
+		level INFO
+	}
+}
