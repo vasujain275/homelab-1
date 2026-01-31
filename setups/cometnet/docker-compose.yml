@@ -1,31 +1,11 @@
 services:
-  caddy:
-    container_name: comet-caddy
-    image: caddy:alpine
-    restart: unless-stopped
-    ports:
-      - "8766:8766"   # Exposed port for Cloudflare Tunnel
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - /home/vasu/services/cometnet/caddy/data:/data
-      - /home/vasu/services/cometnet/caddy/config:/config
-    depends_on:
-      comet:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8766/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
   comet:
     container_name: comet
     image: g0ldyy/comet:latest
     restart: unless-stopped
-    # No ports exposed - accessed via Caddy reverse proxy
-    expose:
-      - "8000"   # Comet HTTP API (internal)
-      - "8765"   # CometNet P2P WebSocket (internal)
+    ports:
+      - "8000:8000"   # Comet HTTP API
+      - "8765:8765"   # CometNet P2P WebSocket
     env_file:
       - .env
     environment:

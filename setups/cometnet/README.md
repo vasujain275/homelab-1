@@ -1,6 +1,6 @@
 # CometNet Homelab Deployment
 
-This is a self-hosted CometNet instance configured for homelab deployment behind CGNAT using Cloudflare Tunnels with Caddy reverse proxy.
+This is a self-hosted CometNet instance configured for homelab deployment behind CGNAT using Cloudflare Tunnels.
 
 ## What is CometNet?
 
@@ -15,32 +15,34 @@ CometNet is a decentralized P2P network integrated into Comet that automatically
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│ HOMELAB (Behind CGNAT)                                              │
-│                                                                     │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────────────────┐  │
-│  │  PostgreSQL │◄───│    Comet    │◄───│    Caddy Reverse Proxy  │  │
-│  │  :5432      │    │  :8000 HTTP │    │    :8766 (external)     │  │
-│  │  (internal) │    │  :8765 WS   │    │                         │  │
-│  └─────────────┘    └─────────────┘    │  /cometnet/ws → :8765   │  │
-│                                        │  /*          → :8000   │  │
-│                                        └────────────┬────────────┘  │
-│                                                     │               │
-│  ┌──────────────────────────────────────────────────┴─────────────┐ │
-│  │                  Cloudflare Tunnel (cloudflared)               │ │
-│  │                                                                │ │
-│  │   comet.vasujain.me → http://192.168.1.75:8766                 │ │
-│  │                                                                │ │
-│  └────────────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────────┘
-                                │
-                                ▼ (outbound tunnel)
-                      ┌──────────────────┐
-                      │  Cloudflare Edge │
-                      │                  │
-                      │  comet.vasujain.me (HTTPS/WSS)
-                      └──────────────────┘
-                                │
+┌──────────────────────────────────────────────────────────────┐
+│ HOMELAB (Behind CGNAT)                                       │
+│                                                              │
+│  ┌─────────────┐    ┌─────────────────────────┐             │
+│  │  PostgreSQL │◄───│        Comet            │             │
+│  │  :5432      │    │  :8000 HTTP API         │             │
+│  │  (internal) │    │  :8765 CometNet WS      │             │
+│  └─────────────┘    └──────────┬──────────────┘             │
+│                                │                             │
+│                     ┌──────────┴──────────┐                  │
+│                     │                     │                  │
+│  ┌──────────────────▼───────┐  ┌─────────▼──────────────┐   │
+│  │  Cloudflare Tunnel       │  │  Cloudflare Tunnel     │   │
+│  │                          │  │                        │   │
+│  │  comet.vasujain.me       │  │  cometnet.vasujain.me  │   │
+│  │  → 192.168.1.75:8000     │  │  → 192.168.1.75:8765   │   │
+│  └──────────────────────────┘  └────────────────────────┘   │
+└──────────────────────────────────────────────────────────────┘
+                     │                     │
+                     ▼ (outbound tunnels)  ▼
+          ┌──────────────────┐  ┌──────────────────┐
+          │ Cloudflare Edge  │  │ Cloudflare Edge  │
+          │                  │  │                  │
+          │ comet.vasujain.me│  │cometnet.vasujain │
+          │    (HTTPS)       │  │    .me (WSS)     │
+          └──────────────────┘  └──────────────────┘
+                     │                     │
+                     └──────────┬──────────┘
                                 ▼
                       ┌──────────────────┐
                       │  CometNet Peers  │
@@ -49,11 +51,9 @@ CometNet is a decentralized P2P network integrated into Comet that automatically
 ```
 
 **Traffic Flow:**
-1. External request hits `comet.vasujain.me` (Cloudflare)
-2. Cloudflare Tunnel routes to `192.168.1.75:8766` (Caddy)
-3. Caddy routes based on path:
-   - `/cometnet/ws` → Comet WebSocket (:8765)
-   - Everything else → Comet HTTP API (:8000)
+1. HTTP requests hit `comet.vasujain.me` → Tunnel → Port 8000 (Comet HTTP API)
+2. WebSocket requests hit `cometnet.vasujain.me` → Tunnel → Port 8765 (CometNet P2P)
+3. Two separate subdomains, no reverse proxy needed
 
 ## Prerequisites
 
@@ -67,17 +67,13 @@ CometNet is a decentralized P2P network integrated into Comet that automatically
 ```
 /path/to/this/folder/            # This folder (config files)
 ├── docker-compose.yml           # Container orchestration
-├── Caddyfile                    # Caddy reverse proxy config
 ├── .env.example                 # Template (commit-safe)
 ├── .env                         # Actual secrets (DO NOT COMMIT)
 └── README.md                    # This file
 
 /home/vasu/services/cometnet/    # Data directory (persistent storage)
 ├── comet/                       # Comet app data + CometNet keys
-├── postgres/                    # PostgreSQL database
-└── caddy/                       # Caddy data and config
-    ├── data/
-    └── config/
+└── postgres/                    # PostgreSQL database
 ```
 
 ## Deployment Steps
@@ -86,18 +82,19 @@ CometNet is a decentralized P2P network integrated into Comet that automatically
 
 In **Cloudflare Zero Trust Dashboard** → **Networks** → **Tunnels** → **[Your Tunnel]** → **Public Hostnames**:
 
-Add **one** hostname entry (Caddy handles path-based routing):
+Add **two** hostname entries:
 
 | Subdomain | Domain | Type | URL |
 |-----------|--------|------|-----|
-| `comet` | `vasujain.me` | HTTP | `192.168.1.75:8766` |
+| `comet` | `vasujain.me` | HTTP | `192.168.1.75:8000` |
+| `cometnet` | `vasujain.me` | HTTP | `192.168.1.75:8765` |
 
-> **Note:** Cloudflare automatically handles WebSocket upgrades. Caddy routes `/cometnet/ws` to the WebSocket port internally.
+> **Note:** Cloudflare automatically handles WebSocket upgrades for the `cometnet` subdomain.
 
 ### Step 2: Create Data Directory
 
 ```bash
-sudo mkdir -p /home/vasu/services/cometnet/{comet,postgres,caddy/data,caddy/config}
+sudo mkdir -p /home/vasu/services/cometnet/{comet,postgres}
 sudo chown -R $(id -u):$(id -g) /home/vasu/services/cometnet
 ```
 
