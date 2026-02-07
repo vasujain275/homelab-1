@@ -1,8 +1,10 @@
 services:
   comet:
     container_name: comet
-    image: g0ldyy/comet:latest
+    image: g0ldyy/comet:dev
     restart: unless-stopped
+    mem_limit: 2048m
+    memswap_limit: 2048m
     ports:
       - "8766:8000"   # Comet HTTP API (external 8766 → internal 8000)
       - "8765:8765"   # CometNet P2P WebSocket
@@ -25,16 +27,14 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-
   postgres:
     container_name: comet-postgres
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-      PGDATA: /var/lib/postgresql/data/pgdata
     command:
       - "postgres"
       - "-c"
@@ -46,7 +46,7 @@ services:
       - "-c"
       - "max_connections=50"
     volumes:
-      - /home/vasu/services/cometnet/postgres:/var/lib/postgresql/data
+      - /home/vasu/services/cometnet/postgres:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
