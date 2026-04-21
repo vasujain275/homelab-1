@@ -11,6 +11,11 @@ services:
     volumes:
       - ${DOCKER_DATA_DIR}/jackett:/config
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
     healthcheck:
       test: curl -f http://localhost:9117/health
       interval: 30s
