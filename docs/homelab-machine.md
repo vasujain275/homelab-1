@@ -76,7 +76,7 @@ Enabled at boot. Keyboard LEDs never light up.
 Added to `/etc/default/grub`:
 
 ```
-GRUB_CMDLINE_LINUX_DEFAULT="consoleblank=300"
+GRUB_CMDLINE_LINUX_DEFAULT="consoleblank=300 pcie_aspm=off irqpoll"
 ```
 
 - `consoleblank=300` → TTY display blanks after **300 seconds (5 min)** of no input.
@@ -98,10 +98,24 @@ Installed from [Docker's official APT repo](https://docs.docker.com/engine/insta
 - `vasu` added to `docker` group — no `sudo` needed for `docker` commands.
 - Verify: `docker run hello-world`, `docker compose version`.
 
-### 6. Bootloader
+### 6. Wi-Fi Stability (ath10k PCIe Fix)
+
+The Dell's Qualcomm Atheros `ath10k` Wi-Fi card drops connectivity when PCIe Active State Power Management (ASPM) kicks in during idle. This causes fatal PCIe bus errors and IRQ disablement — Wi-Fi dies until reboot.
+
+Fix: disabled PCIe ASPM + enabled interrupt polling via kernel params:
+
+```
+pcie_aspm=off irqpoll
+```
+
+- `pcie_aspm=off` — prevents the Wi-Fi card from entering buggy low-power PCIe states
+- `irqpoll` — fallback polling if hardware interrupts become unreliable
+- Trade-off: negligible idle power increase (~1W), large stability gain
+
+### 7. Bootloader
 
 - GRUB timeout: `0` (no menu, boots directly)
-- Kernel params: `consoleblank=300 crashkernel=2G-4G:320M,...` (crashkernel from kdump-tools drop-in)
+- Kernel params: `consoleblank=300 pcie_aspm=off irqpoll crashkernel=2G-4G:320M,...`
 - Drop-in: `/etc/default/grub.d/kdump-tools.cfg` (appends `crashkernel=`)
 
 ---
@@ -120,8 +134,9 @@ grep ^Handle /etc/systemd/logind.conf
 # kb backlight off?
 cat /sys/class/leds/dell::kbd_backlight/brightness   # → 0
 
-# consoleblank active?
-cat /proc/cmdline | grep consoleblank   # → consoleblank=300
+# kernel params correct?
+cat /proc/cmdline | grep -E "consoleblank|pcie_aspm|irqpoll"
+# → consoleblank=300 pcie_aspm=off irqpoll
 
 # docker working?
 docker ps && docker compose version
