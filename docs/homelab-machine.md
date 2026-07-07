@@ -8,7 +8,6 @@
 | CPU | Intel i3-6006U (2 cores, 2.0 GHz) |
 | RAM | 8 GB DDR4 |
 | OS Drive | 512 GB SSD (`/dev/sda`) |
-| Data Drive | 1 TB HDD (`/dev/sdb`) mounted at `/mnt/data` |
 | Network | WiFi — VJ-Wifi-2.4G, static IP `192.168.1.75` |
 | GPU | Intel HD Graphics 520 (integrated) |
 | Keyboard | Dell backlit (`dell::kbd_backlight`) |
