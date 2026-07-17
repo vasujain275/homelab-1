@@ -35,6 +35,15 @@ Uploads free. Downloads free up to 3× average stored.
 
 Full restore is always free (well within the 3× free egress allowance).
 
+## Security
+
+All data is **encrypted client-side** before it leaves your server. restic uses:
+- **AES-256-GCM** per chunk
+- Key derived from `RESTIC_PASSWORD` via scrypt (high iteration count)
+- **TLS** in transit to B2
+
+Backblaze B2 never sees your photos — they only store encrypted blobs with random hex filenames. The `RESTIC_PASSWORD` is the sole decryption key. If lost, the backup is **unrecoverable**.
+
 ## Prerequisites
 
 ### On the homelab server
