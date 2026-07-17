@@ -60,10 +60,10 @@ If you don't have a Backblaze B2 account yet, [sign up here](https://www.backbla
 
 1. Go to [**Buckets**](https://secure.backblaze.com/b2_buckets.htm) in the B2 web console
 2. Click **Create a Bucket**
-3. Name: `immich-backup` (or any name you prefer — update `RESTIC_REPOSITORY` to match)
+3. Name: `vj-immich-backup` (or any name you prefer — update `RESTIC_REPOSITORY` to match)
 4. Set to **Private** (files are only accessible with your keys)
 5. Choose a region:
-   - `us-west-004` (Sacramento, CA) — good latency from India, standard pricing
+   - `us-east-005` (Sacramento, CA) — good latency from India, standard pricing
    - `eu-central-003` (Amsterdam) — if you prefer EU servers
    - Region affects the endpoint URL in `.backup.env`. Stick with one.
 6. Leave encryption as default (AES-256, server-side)
@@ -78,7 +78,7 @@ If you don't have a Backblaze B2 account yet, [sign up here](https://www.backbla
 3. Name: `immich-restic` (or any name)
 4. **Key Type:** `S3 Compatible` (NOT "Master Application Key")
 5. **Access:** restrict to the bucket you just created:
-   - Select the `immich-backup` bucket
+   - Select the `vj-immich-backup` bucket
    - Permissions needed: **Read, Write, List, Delete** (restic needs all four)
 6. Click **Create Application Key**
 7. **Copy the `keyID` and `applicationKey` immediately** — they're shown only once.
@@ -91,7 +91,7 @@ If you don't have a Backblaze B2 account yet, [sign up here](https://www.backbla
 
 Without this, restic's deleted blobs stay as hidden versions in B2 and you **keep getting billed** for them.
 
-1. Go to [**Buckets**](https://secure.backblaze.com/b2_buckets.htm) → click your `immich-backup` bucket
+1. Go to [**Buckets**](https://secure.backblaze.com/b2_buckets.htm) → click your `vj-immich-backup` bucket
 2. Click **Lifecycle Settings**
 3. Under **File Versions**, set:
    - "Keep only the **last** version"
@@ -110,7 +110,7 @@ sudo apt install awscli
 # Test (use the actual keyID and applicationKey)
 AWS_ACCESS_KEY_ID=your_key_id \
 AWS_SECRET_ACCESS_KEY=your_app_key \
-aws s3 ls s3://immich-backup/ --endpoint-url https://s3.us-west-004.backblazeb2.com --region us-west-004
+aws s3 ls s3://vj-immich-backup/ --endpoint-url https://s3.us-east-005.backblazeb2.com --region us-east-005
 ```
 
 If it returns without errors, the bucket is set up correctly. Now proceed to [Setup](#setup) below.
