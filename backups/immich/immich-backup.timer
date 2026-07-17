@@ -1,0 +1,12 @@
+[Unit]
+Description=Daily Immich backup at 3 AM
+Requires=immich-backup.service
+
+[Timer]
+OnCalendar=daily
+OnCalendar=03:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target
