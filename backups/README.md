@@ -8,7 +8,7 @@ Each subdirectory contains the backup script, environment template, systemd unit
 
 | Service | Tool | Destination | Schedule |
 |---|---|---|---|
-| [Immich](immich/) | restic | Backblaze B2 | Daily, 3 AM |
+| [Immich](immich/) | restic | Backblaze B2 | Daily, 00:00 UTC |
 
 ## Conventions
 

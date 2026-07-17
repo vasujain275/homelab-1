@@ -23,11 +23,11 @@ restic snapshots
 Output looks like:
 ```
 ID        Date                 Host       Tags        Paths
-abc12345  2026-07-17 03:00:05  homelab-1              /home/vasu/services/immich/library
+abc12345  2026-07-17 00:00:05  homelab-1              /home/vasu/services/immich/library
                                                        /home/vasu/services/immich/upload
                                                        /home/vasu/services/immich/profile
                                                        /tmp/immich-db-2026-07-17-030000.sql.gz
-def67890  2026-07-16 03:00:03  homelab-1              (same paths)
+def67890  2026-07-16 00:00:03  homelab-1              (same paths)
 ...
 ```
 

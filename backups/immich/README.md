@@ -1,7 +1,7 @@
 # Immich backup — restic → Backblaze B2
 
 Daily automated backup of Immich originals and database to Backblaze B2.
-Runs at 3 AM via systemd timer, keeps 7 daily + 4 weekly + 6 monthly + 2 yearly snapshots.
+Runs at 00:00 UTC via systemd timer, keeps 7 daily + 4 weekly + 6 monthly + 2 yearly snapshots.
 
 ## What gets backed up
 
@@ -202,6 +202,6 @@ Quick version:
 | `.backup.env.example` | Template for B2 credentials and restic config |
 | `.backup.env` | Actual secrets (gitignored, chmod 600) |
 | `immich-backup.service` | systemd service unit |
-| `immich-backup.timer` | systemd timer unit (daily at 3 AM) |
+| `immich-backup.timer` | systemd timer unit (daily at 00:00 UTC) |
 | `README.md` | This file |
 | `RESTORE.md` | Detailed restore runbook |

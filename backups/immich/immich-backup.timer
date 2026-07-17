@@ -1,5 +1,5 @@
 [Unit]
-Description=Daily Immich backup at 3 AM
+Description=Daily Immich backup at 00:00 UTC
 Requires=immich-backup.service
 
 [Timer]
