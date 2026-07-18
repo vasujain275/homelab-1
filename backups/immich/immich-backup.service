@@ -14,5 +14,5 @@ NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/tmp
+ReadWritePaths=/tmp /home/vasu/.cache/restic
 ReadOnlyPaths=/home/vasu/services/immich
