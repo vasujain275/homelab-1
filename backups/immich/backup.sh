@@ -49,6 +49,16 @@ cleanup() {
     if [[ -f "$DUMP_FILE" ]]; then
         rm -f "$DUMP_FILE"
     fi
+    if [[ -f "$DUMP_FILE" ]]; then
+        rm -f "$DUMP_FILE"
+    fi
+    
+    if [[ $exit_code -eq 0 ]]; then
+        curl -s -o /dev/null --max-time 10 -d "Immich backup OK — $(date '+%F %H:%M UTC')" ntfy.sh/imm-bk-noti || true
+    else
+        curl -s -o /dev/null --max-time 10 -d "Immich backup FAILED (exit $exit_code) — $(date '+%F %H:%M UTC')" ntfy.sh/imm-bk-noti || true
+    fi
+    
     log "Backup finished. Total time: $(elapsed). Exit code: $exit_code"
 }
 trap cleanup EXIT
@@ -148,6 +158,3 @@ log "Total time: $(elapsed)"
 log "DB dump: $DUMP_SIZE"
 log "Repo: $RESTIC_REPOSITORY"
 log "Snapshots: $(restic snapshots --json 2>/dev/null | grep -c '"short_id"' || echo "0")"
-
-# ── Notify ──
-curl -s -o /dev/null --max-time 10 -d "Immich backup OK — $(date +%F %H:%M UTC)" ntfy.sh/imm-bk-noti || true
