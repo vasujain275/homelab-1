@@ -148,3 +148,6 @@ log "Total time: $(elapsed)"
 log "DB dump: $DUMP_SIZE"
 log "Repo: $RESTIC_REPOSITORY"
 log "Snapshots: $(restic snapshots --json 2>/dev/null | grep -c '"short_id"' || echo "0")"
+
+# ── Notify ──
+curl -s -o /dev/null --max-time 10 -d "Immich backup OK — $(date +%F %H:%M UTC)" ntfy.sh/imm-bk-noti || true
