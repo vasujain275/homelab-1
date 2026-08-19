@@ -147,6 +147,7 @@ log "immich-server started OK"
 log "=== Step 6/6: Pruning old snapshots ==="
 log "Retention: 7 daily, 4 weekly, 6 monthly, 2 yearly"
 restic forget \
+    --group-by host \
     --keep-daily 7 \
     --keep-weekly 4 \
     --keep-monthly 6 \

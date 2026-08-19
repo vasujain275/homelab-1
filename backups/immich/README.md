@@ -160,6 +160,18 @@ systemctl status immich-backup.timer
 systemctl list-timers | grep immich
 ```
 
+## Retention (pruning)
+
+Snapshots are pruned with `--group-by host` (NOT the default `host,paths`).
+
+> ⚠️ **Critical:** the default `--group-by host,paths` would be a silent no-op here,
+> because the DB dump filename changes daily
+> (`/tmp/immich-db-YYYY-MM-DD-*.sql.gz`), giving every snapshot unique paths and
+> making restic treat each snapshot as its own group — nothing would ever be pruned.
+> Always pass `--group-by host`.
+
+Keep: **7 daily + 4 weekly + 6 monthly + 2 yearly** snapshots.
+
 ## Monitoring
 
 Check last run status:
