@@ -80,6 +80,11 @@ for var in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY RESTIC_PASSWORD RESTIC_REPOSI
 done
 log "Credentials loaded OK (repo: $RESTIC_REPOSITORY)"
 
+# ── 1b. Remove stale locks ──
+# A previously-killed restic process (e.g. SSH drop) can leave a lock that
+# blocks forget/prune. Self-heal before starting.
+restic unlock >/dev/null 2>&1 || true
+
 # ── 2. Stop immich-server for consistency ──
 log "=== Step 2/6: Stopping immich-server ==="
 if docker inspect immich_server --format '{{.State.Running}}' 2>/dev/null | grep -q true; then
